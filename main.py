@@ -88,7 +88,7 @@ class Application:
         self.quintoContainer = customtkinter.CTkFrame(master=None, fg_color="transparent")
         self.quintoContainer.pack(anchor="e", padx=10, pady=4)
         # LOGO DO PROJETO
-        image_path = "C:\\Users\\Analise\\Desktop\\Projetos\\exe_doc_diario\\img\\logo.png"
+        image_path = "C:\\Users\\Analise\\Desktop\\Projetos\\pdf_xls_reader\\img\\logo.png"
         pil_image = Image.open(image_path)
         ctk_image = CTkImage(pil_image, size=(80, 80))
         # LOGO
@@ -244,6 +244,6 @@ class ExecutarThread(threading.Thread):
 root = customtkinter.CTk()
 root.geometry("400x450")
 root.title("Consulta")
-root.iconbitmap('C:\\Users\\Analise\\Desktop\\Projetos\\exe_doc_diario\\img\\logo.ico')
+root.iconbitmap('C:\\Users\\Analise\\Desktop\\Projetos\\pdf_xls_reader\\img\\logo.ico')
 Application(root)
 root.mainloop()

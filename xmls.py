@@ -62,7 +62,7 @@ def iniciar_conversao():
 # Janela principal
 janela = tk.Tk()
 janela.title("Capturador de Chaves")
-janela.geometry("300x300")
+janela.geometry("300x320")
 
 # Botão para selecionar os PDFs
 btn_selecionar_pdf = tk.Button(janela, text="Selecionar PDFs", command=selecionar_pdf)
