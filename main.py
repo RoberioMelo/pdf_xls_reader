@@ -1,6 +1,7 @@
-from tkinter import messagebox, filedialog, LEFT, FALSE, BOTTOM, TOP, RIGHT, StringVar, END
-from customtkinter import CTk, CTkImage
-from PIL import Image
+from tkinter import messagebox, filedialog, LEFT, BOTTOM, TOP, RIGHT, StringVar, END, PhotoImage
+from tkinter import Tk, Label, Button, Entry, Scrollbar, Text, Frame, Canvas
+from tkinter.ttk import Frame, Progressbar
+from PIL import Image, ImageTk
 import pandas as pd
 import pdfplumber
 import datetime
@@ -9,8 +10,28 @@ import re
 import os
 import io
 import threading
-import customtkinter
 from tqdm import tqdm
+
+
+class ScrollableFrame(Frame):
+    def __init__(self, master, width, height, corner_radius):
+        super().__init__(master)
+
+        self.canvas = Canvas(self, width=width, height=height)  # Defina o atributo canvas aqui
+        scrollbar = Scrollbar(self, orient="vertical", command=self.canvas.yview)
+        self.canvas.config(yscrollcommand=scrollbar.set)
+
+        scrollbar.pack(side="right", fill="y")
+        self.canvas.pack(side="left", fill="both", expand=True)
+
+        self.interior = Frame(self.canvas)  # Use self.canvas como parent
+        self.canvas.create_window((0, 0), window=self.interior, anchor="nw")
+
+        self.interior.bind("<Configure>", self.set_scrollregion)
+
+    def set_scrollregion(self, event=None):
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
 
 
 def remove_special_characters(str1):
@@ -31,111 +52,98 @@ def converter_pdf_para_txt(lista_pdf):
 
 
 class Application:
-    def __init__(self, master=None):
+    def __init__(self, master):
         self.df_final = None
         self.xlsx_sheet = None
         self.lista_pdf = None
         self.master = master
         master.resizable(0, 0)
-        self.fontePadrao = customtkinter.CTkFont(family='Calibri', size=20)
+        self.fontePadrao = ("Calibri", 20)
         self.arquivo_pdf_selecionado = False
         self.arquivo_xlsx_selecionado = False
 
-        # BORDAS DA TELA
-        self.bordaContainer = customtkinter.CTkFrame(master=None, width=8, height=500, corner_radius=0)
-        self.bordaContainer.pack(side=LEFT)
-        self.bordaContainer.propagate(FALSE)
+        # # BORDAS DA TELA
+        # self.bordaContainer = Frame(master, width=8, height=500)
+        # self.bordaContainer.pack(side="left")
+        # self.bordaContainer.propagate(False)
+        #
+        # self.bordaContainer = Frame(master=None, width=500, height=8)
+        # self.bordaContainer.pack(side=BOTTOM)
+        # self.bordaContainer.propagate(False)
+        #
+        # self.bordaContainer = Frame(master=None, width=500, height=8)
+        # self.bordaContainer.pack(side=TOP)
+        # self.bordaContainer.propagate(False)
+        #
+        # self.bordaContainer = Frame(master=None, width=500, height=8)
+        # self.bordaContainer.pack(side=RIGHT)
+        # self.bordaContainer.propagate(False)
 
-        self.bordaContainer = customtkinter.CTkFrame(master=None, width=500, height=8, corner_radius=0)
-        self.bordaContainer.pack(side=BOTTOM)
-        self.bordaContainer.propagate(FALSE)
+        # # BOTÃO SWITCH PARA TROCAR O TEMA
+        # self.appearance_mode = StringVar(value="System")
+        # self.buttonTema = customtkinter.CTkSwitch(master=None, text="☀", font=("Arial", 20), onvalue="Light",
+        #                                           offvalue="Dark", variable=self.appearance_mode,
+        #                                           command=self.change_appearance_mode_event)
+        # self.buttonTema.pack(padx=20, pady=10)
+        # self.buttonTema.pack(side=BOTTOM, anchor="w")
+        # self.buttonTema.propagate(False)
 
-        self.bordaContainer = customtkinter.CTkFrame(master=None, width=500, height=8, corner_radius=0)
-        self.bordaContainer.pack(side=TOP)
-        self.bordaContainer.propagate(FALSE)
-
-        self.bordaContainer = customtkinter.CTkFrame(master=None, width=8, height=500, corner_radius=0)
-        self.bordaContainer.pack(side=RIGHT)
-        self.bordaContainer.propagate(FALSE)
-        # BOTÃO SWITCH PARA TROCAR O TEMA
-        self.appearance_mode = StringVar(value="System")
-        self.buttonTema = customtkinter.CTkSwitch(master=None, text="☀", font=("Arial", 20), onvalue="Light",
-                                                  offvalue="Dark", variable=self.appearance_mode,
-                                                  command=self.change_appearance_mode_event)
-        self.buttonTema.pack(padx=20, pady=10)
-        self.buttonTema.pack(side=BOTTOM, anchor="w")
-        self.buttonTema.propagate(FALSE)
-        # FRAME DO CODIGO, USADO PARA SEPARAR OS ELEMENTOS
-        self.primeiroContainer = customtkinter.CTkFrame(master=None, fg_color="transparent")
-        self.primeiroContainer.pack(anchor="center")
-        self.primeiroContainer.configure()
-
-        self.segundoContainer = customtkinter.CTkFrame(master=None, fg_color="transparent")
-        self.segundoContainer.pack(anchor="e", padx=10, pady=4)
-
-        self.terceiroContainer = customtkinter.CTkFrame(master=None, fg_color="transparent")
-        self.terceiroContainer.pack(anchor="e", padx=10, pady=4)
         # FRAME DA BARRA DE PROGRESSO
-        self.sextoContainer = customtkinter.CTkProgressBar(master=None, orientation="horizontal",
-                                                           progress_color="#00AB0B")
-        self.sextoContainer.pack(anchor="e", padx=90, pady=25)
-        self.progress = self.sextoContainer
-        self.sextoContainer.destroy()
+        # self.sextoContainer = customtkinter.CTkProgressBar(master=None, orientation="horizontal",
+        #                                                    progress_color="#00AB0B")
+        # self.sextoContainer.pack(anchor="e", padx=90, pady=25)
+        # self.progress = self.sextoContainer
+        # self.sextoContainer.destroy()
 
-        self.quartoContainer = customtkinter.CTkFrame(master=None, fg_color="transparent")
-        self.quartoContainer.pack(anchor="e", padx=120, pady=5)
-
-        self.quintoContainer = customtkinter.CTkFrame(master=None, fg_color="transparent")
-        self.quintoContainer.pack(anchor="e", padx=10, pady=4)
         # LOGO DO PROJETO
         image_path = "C:\\Users\\Analise\\Desktop\\Projetos\\pdf_xls_reader\\img\\logo.png"
         pil_image = Image.open(image_path)
-        ctk_image = CTkImage(pil_image, size=(80, 80))
+        pil_image = pil_image.resize((80, 80), Image.BILINEAR)  # Redimensiona a imagem para o tamanho desejado
+        tk_image = ImageTk.PhotoImage(pil_image)  # Use ImageTk.PhotoImage para criar a imagem
+
         # LOGO
-        self.titulo = customtkinter.CTkLabel(self.primeiroContainer, text="", image=ctk_image)
-        self.titulo.pack()
+        self.titulo = Label(text="", image=tk_image)
+        self.titulo.image = tk_image  # Mantém uma referência à imagem
+        self.titulo.grid(row=0, column=0,padx=(80, 0))
+
         # LABEL "SELECIONAR PDFs"
-        self.buttonPDFText = customtkinter.CTkLabel(self.segundoContainer, pady=8, text="Selecione o(s) PDF(s):")
-        self.buttonPDFText.pack()
+        self.buttonPDFText = Label(pady=8, text="Selecione o(s) PDF(s):")
+        self.buttonPDFText.grid(row=1, column=0,padx=(80, 0))
         # BOTÃO DE SELEÇÃO
-        self.buttonPDFLabel = customtkinter.CTkButton(self.segundoContainer, text="Selecionar", width=70,
-                                                      height=29, command=self.selecionar_pdf)
-        self.buttonPDFLabel["font"] = self.fontePadrao
-        self.buttonPDFLabel.pack(side=LEFT, padx=5)
+        self.buttonPDFLabel = Button(text="Selecionar", width=10, height=1, command=self.selecionar_pdf)
+        self.buttonPDFLabel.grid(row=2, column=0,sticky="w",padx=(10, 5))
+
         # CAIXA DE TEXTO
-        self.PDF = customtkinter.CTkEntry(self.segundoContainer, placeholder_text="Adicione seus PDFs",
-                                          width=280, height=30)
-        self.PDF["font"] = self.fontePadrao
-        self.PDF.pack()
+        self.PDF = ScrollableFrame(master=None, width=255, height=100, corner_radius=0)
+        self.PDF.grid(row=2, column=0, sticky="w", padx=(100, 0))
+
         # LABEL "SELECIONAR EXCEL"
-        self.buttonXLSXText = customtkinter.CTkLabel(self.terceiroContainer, pady=5,
+        self.buttonXLSXText = Label(pady=5,
                                                      text="Selecione a planilha de Empresas:")
-        self.buttonXLSXText.pack()
+        self.buttonXLSXText.grid(row=3, column=0,padx=(80, 0))
         # BOTÃO DE SELEÇÃO
-        self.buttonXLSXLabel = customtkinter.CTkButton(self.terceiroContainer, text="Selecionar", width=70,
-                                                       height=29, command=self.selecionar_xlsx)
-        self.buttonXLSXLabel["font"] = self.fontePadrao
-        self.buttonXLSXLabel.pack(side=LEFT, padx=5)
+        self.buttonXLSXLabel = Button(text="Selecionar", width=10, height=1, command=self.selecionar_xlsx)
+        self.buttonXLSXLabel.grid(row=4, column=0, sticky="w", padx=(10, 5))  # Ajuste o valor de padx aqui
+
         # CAIXA DE TEXTO
-        self.XLSX = customtkinter.CTkEntry(self.terceiroContainer, placeholder_text="Adicione sua planilha de empresas",
-                                           width=280, height=30)
-        self.XLSX["font"] = self.fontePadrao
-        self.XLSX.pack()
+        self.XLSX = Entry(width=45)
+        self.XLSX.grid(row=4, column=0, sticky="w", padx=(100, 0))
+
         # INICIAR
-        self.executar = customtkinter.CTkButton(self.quartoContainer, text="Iniciar",
-                                                command=lambda: ExecutarThread(self).start())
-        self.executar["font"] = self.fontePadrao
-        self.executar.pack()
+        self.botaoIniciar = Button(text="Iniciar Consulta", command=self.executar_thread)
+        self.botaoIniciar.grid(row=6, column=0, pady=5)
         # Salvar
-        self.salvarR = customtkinter.CTkButton(self.quartoContainer, text="Salvar",
-                                               command=self.salvar)
-        self.salvarR["font"] = self.fontePadrao
-        self.salvarR.pack()
+        self.salvarR = Button(text="Salvar",  command=self.salvar)
+        self.salvarR.grid(row=7, column=0, pady = 5)
+        # Salvar
 
     # FUNÇÕES
-    def change_appearance_mode_event(self):
-        new_appearance_mode = self.appearance_mode.get()
-        customtkinter.set_appearance_mode(new_appearance_mode)
+    def executar_thread(self):
+        ExecutarThread(self).start()
+    #
+    # def change_appearance_mode_event(self):
+    #     new_appearance_mode = self.appearance_mode.get()
+    #     customtkinter.set_appearance_mode(new_appearance_mode)
 
     def selecionar_xlsx(self):
         self.xlsx_sheet = filedialog.askopenfilename(initialdir="/", title="Selecione um arquivo",
@@ -147,21 +155,26 @@ class Application:
         self.XLSX.insert(END, self.xlsx_sheet)
 
     def selecionar_pdf(self):
-        self.lista_pdf = filedialog.askopenfilenames(initialdir="/", title="Selecione um arquivo",
-                                                     filetypes=(("pdf files", "*.pdf"), ("all files", "*.*")))
-        if self.lista_pdf:
+        lista_nova = filedialog.askopenfilenames(initialdir="/", title="Selecione um arquivo",
+                                                 filetypes=(("pdf files", "*.pdf"), ("all files", "*.*")))
+
+        if lista_nova:
+            self.lista_pdf = lista_nova
             self.arquivo_pdf_selecionado = True
 
-        self.PDF.delete(0, END)
-        for i in self.lista_pdf:
-            self.PDF.insert(END, i + "/" + "\n")
+            # Limpa o conteúdo do ScrollableFrame
+            for widget in self.PDF.interior.winfo_children():
+                widget.destroy()
+
+            for i in self.lista_pdf:
+                label = Label(self.PDF.interior, text=i)
+                label.pack()
+
         return self.lista_pdf
 
-    @property
     def iniciar(self):
-        if not (self.arquivo_pdf_selecionado and self.arquivo_xlsx_selecionado):  # Verifique se a variável é True
+        if not (self.arquivo_pdf_selecionado and self.arquivo_xlsx_selecionado):
             messagebox.showerror("Erro", "Selecione os PDFs e a planilha antes de iniciar o processo.")
-
             return
         lista_pdf = self.lista_pdf
         pdf_text = converter_pdf_para_txt(lista_pdf)
@@ -226,11 +239,10 @@ class Application:
         return None
 
     def salvar(self):
-        if not hasattr(self, 'df_final'):
+        if self.df_final is None:
             messagebox.showwarning("Aviso", "Por favor, execute a consulta primeiro.")
             return
         salvar_resultado(self.df_final)
-
 
 class ExecutarThread(threading.Thread):
     def __init__(self, application):
@@ -238,12 +250,12 @@ class ExecutarThread(threading.Thread):
         self.application = application
 
     def run(self):
-        self.application.iniciar
+        self.application.iniciar()
 
 
-root = customtkinter.CTk()
-root.geometry("400x450")
+root = Tk()
+root.geometry("380x390")
 root.title("Consulta")
 root.iconbitmap('C:\\Users\\Analise\\Desktop\\Projetos\\pdf_xls_reader\\img\\logo.ico')
-Application(root)
+app = Application(root)
 root.mainloop()
