@@ -1,5 +1,5 @@
-from tkinter import messagebox, filedialog, LEFT, BOTTOM, TOP, RIGHT, StringVar, END, PhotoImage,Tk, Label, Button, Entry,Listbox, Scrollbar, Text, Frame, Canvas
-from tkinter.ttk import Frame, Progressbar
+from tkinter import messagebox, filedialog, LEFT, BOTTOM, TOP, RIGHT, StringVar, END, Checkbutton, PhotoImage,Tk, Label, Button, Entry,Listbox, Scrollbar, Text, Frame, Toplevel
+from tkinter.ttk import Frame, Progressbar, Combobox
 from PIL import Image, ImageTk
 import pandas as pd
 import pdfplumber
@@ -9,30 +9,6 @@ import re
 import os
 import io
 import threading
-
-
-# class ScrollableFrame(Frame):
-#     def __init__(self, master, width, height, corner_radius):
-#         super().__init__(master)
-#         try:
-#             self.canvas = Canvas(self, width=width, height=height)  # Defina o atributo canvas aqui
-#             scrollbar = Scrollbar(self, orient="vertical", command=self.canvas.yview)
-#             self.canvas.config(yscrollcommand=scrollbar.set)
-#
-#             scrollbar.pack(side="right", fill="y")
-#             self.canvas.pack(side="left", fill="both", expand=True)
-#
-#             self.interior = Frame(self.canvas)  # Use self.canvas como parent
-#             self.canvas.create_window((0, 0), window=self.interior, anchor="nw")
-#
-#             self.interior.bind("<Configure>", self.set_scrollregion)
-#         except Exception as e:
-#             print(f'Erro no ScrollableFrame {e}')
-#     def set_scrollregion(self, event=None):
-#         try:
-#             self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-#         except Exception as e:
-#             print(f'Erro no set_scrollregion {e}')
 
 def remove_special_characters(str1):
     try:
@@ -67,6 +43,8 @@ def converter_pdf_para_txt(lista_pdf):
     except Exception as e:
         print(f'Erro no converter_pdf_para_txt {e}')
 
+
+
 class Application:
     def __init__(self, master):
         try:
@@ -94,9 +72,9 @@ class Application:
             self.imagem_concluido = self.imagem_concluido.resize((15, 15), Image.BILINEAR)
             self.imagem_concluido = ImageTk.PhotoImage(self.imagem_concluido)
 
-            # # LABEL "Diario oficial"
-            # self.buttonPDFText = Label(pady=8, text="Consulta Diario Oficial")
-            # self.buttonPDFText.grid(row=0, column=0,padx=(0, 0), pady=(120,0))
+            # BOTÃO DE CONFIGURAÇÃO
+            self.buttonPDFLabel = Button(text="Ajustes", width=10, height=1, command=self.abrir_nova_janela)
+            self.buttonPDFLabel.grid(row=0, column=0,sticky="e",padx=(10, 5), pady=(10,50))
 
             # LABEL "SELECIONAR PDFs"
             self.buttonPDFText = Label(pady=8, text="Selecione o(s) PDF(s):")
@@ -142,6 +120,47 @@ class Application:
         except Exception as e:
             print(f'Erro no Application {e}')
 
+    # Função para abrir uma nova janela
+    def abrir_nova_janela(self):
+        nova_janela = Toplevel(self.master)
+        nova_janela.title("Configurações")
+        nova_label = Label(nova_janela, text="Esta é uma nova janela!")
+        nova_janela.geometry("380x450")
+        nova_janela.iconbitmap('C:\\Users\\Analise\\Desktop\\Projetos\\pdf_xls_reader\\img\\logo.ico')
+        nova_label.pack()
+
+        # Desabilitar a janela principal enquanto a nova janela estiver aberta
+        self.master.withdraw()
+
+        #Botões
+        Switch = Checkbutton(nova_janela, text='Marque para indicar que sua planilha tem titulo.')
+        Switch.pack()
+
+        # Defina a coluna cnpj correspondente para selecioonar
+        coluna_cnpj = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
+        cb_cnpj = Combobox(nova_janela, values=coluna_cnpj,state="readonly")
+        cb_cnpj.pack()
+
+        # Defina a coluna empresa correspondente para selecioonar
+        coluna_empresa = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
+        cb_empresa = Combobox(nova_janela, values=coluna_empresa,state="readonly")
+        cb_empresa.pack()
+
+        # Defina a coluna inscrição correspondente para selecioonar
+        coluna_inscricao = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
+        cb_inscricao = Combobox(nova_janela, values=coluna_inscricao,state="readonly")
+        cb_inscricao.pack()
+
+
+
+        # Definir uma função para ser chamada quando a nova janela for fechada
+        def fechar_nova_janela():
+            nova_janela.destroy()
+            # Reabilitar a janela principal
+            self.master.deiconify()
+
+        # Configurar uma ação quando a nova janela for fechada
+        nova_janela.protocol("WM_DELETE_WINDOW", fechar_nova_janela)
 
     # FUNÇÕES
     def executar_thread(self):
@@ -151,8 +170,8 @@ class Application:
         except Exception as e:
             print(f'Erro no executar_thread {e}')
     def selecionar_xlsx(self):
-        self.remover_imagem()
         try:
+            self.remover_imagem()
             self.xlsx_sheet = filedialog.askopenfilename(initialdir="/", title="Selecione um arquivo",
                                                      filetypes=(("xlsx files", "*.xlsx"), ("all files", "*.*")))
             if self.xlsx_sheet:
@@ -170,8 +189,8 @@ class Application:
             print(f'Erro no selecionar_xlsx {e}')
 
     def selecionar_pdf(self):
-        self.remover_imagem()
         try:
+            self.remover_imagem()
             lista_nova = filedialog.askopenfilenames(initialdir="/", title="Selecione um arquivo",
                                                      filetypes=(("pdf files", "*.pdf"), ("all files", "*.*")))
 
@@ -199,8 +218,9 @@ class Application:
             if not self.lista_pdf:
                 self.lista_pdf = None
                 self.verif_ati_bt()
+                self.remover_imagem()
             self.PDF.delete(indice)  # Deleta o item no índice especificado
-        self.remover_imagem()
+            self.remover_imagem()
 
     def verif_ati_bt(self):
         if self.xlsx_sheet is not None and self.lista_pdf is not None:
