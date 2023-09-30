@@ -9,6 +9,15 @@ import re
 import os
 import io
 import threading
+import json
+
+with open('config.json', 'r') as arquivo:
+    global cb_inscricao, cb_cnpj, cb_empresa, cb_linha
+    valores = json.load(arquivo)
+    cb_inscricao = valores['cb_inscricao']
+    cb_cnpj = valores['cb_cnpj']
+    cb_empresa = valores['cb_empresa']
+    cb_linha = valores['cb_linha']
 
 def remove_special_characters(str1):
     try:
@@ -42,8 +51,6 @@ def converter_pdf_para_txt(lista_pdf):
 
     except Exception as e:
         print(f'Erro no converter_pdf_para_txt {e}')
-
-
 
 class Application:
     def __init__(self, master):
@@ -120,36 +127,94 @@ class Application:
         except Exception as e:
             print(f'Erro no Application {e}')
 
+
     # Função para abrir uma nova janela
     def abrir_nova_janela(self):
         nova_janela = Toplevel(self.master)
         nova_janela.title("Configurações")
-        nova_label = Label(nova_janela, text="Esta é uma nova janela!")
         nova_janela.geometry("380x450")
         nova_janela.iconbitmap('C:\\Users\\Analise\\Desktop\\Projetos\\pdf_xls_reader\\img\\logo.ico')
-        nova_label.pack()
+        fonte_personalizada = ("Arial", 10, "bold")
 
         # Desabilitar a janela principal enquanto a nova janela estiver aberta
         self.master.withdraw()
 
-        #Botões
-        Switch = Checkbutton(nova_janela, text='Marque para indicar que sua planilha tem titulo.')
-        Switch.pack()
+        # Função para salvar o valor selecionado
+        def salvar_valor():
+            # 1. Carregar o JSON existente em um dicionário
+            with open('config.json', 'r') as arquivo:
+                valores = json.load(arquivo)
+
+            # 2. Faça as alterações desejadas no dicionário
+            valores['cb_inscricao'] = cb_inscricao.get()
+            valores['cb_cnpj'] = cb_cnpj.get()
+            valores['cb_empresa'] = cb_empresa.get()
+            valores['cb_linha'] = cb_linha.get()
+
+            # Mapeamento de letras para valores correspondentes
+            mapeamento_letra_para_valor = {letra: valor for valor, letra in enumerate("ABCDEFGHIJKLMNOPQRSTUVWXYZ")}
+
+            # Converter as letras para valores
+            valor_coluna_cnpj = mapeamento_letra_para_valor.get(valores['cb_cnpj'], valores['cb_cnpj'])
+            valor_cb_inscricao = mapeamento_letra_para_valor.get(valores['cb_inscricao'], valores['cb_inscricao'])
+            valor_Empresa = mapeamento_letra_para_valor.get(valores['cb_empresa'], valores['cb_empresa'])
+
+            if valores['cb_inscricao'] and valores['cb_cnpj'] and valores['cb_empresa'] and valores['cb_linha'] is not None:
+                # 2. Faça as alterações desejadas no dicionário
+                valores['cb_inscricao'] = str(valor_cb_inscricao)
+                valores['cb_cnpj'] = str(valor_coluna_cnpj)
+                valores['cb_empresa'] = str(valor_Empresa)
+                valores['cb_linha'] = cb_linha.get()
+            else:
+                messagebox.showerror("Erro", "Selecione todos os campos para concluir o processo.")
+                return
+
+
+            # 3. Salve o dicionário de volta no arquivo JSON
+            with open('config.json', 'w') as arquivo:
+                json.dump(valores, arquivo, indent=4)
+
+        textTitulo = Label(nova_janela, text="PLANILHA INTELIGÊNTE", font=fonte_personalizada)
+        textTitulo.grid()
+
+        # LABEL
+        buttonPDFText = Label(nova_janela, pady=8, text="Selecione a letra que corresponde a coluna de CNPJ:")
+        buttonPDFText.grid(row=0, column=0, sticky="w", padx=(5,0))
 
         # Defina a coluna cnpj correspondente para selecioonar
-        coluna_cnpj = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-        cb_cnpj = Combobox(nova_janela, values=coluna_cnpj,state="readonly")
-        cb_cnpj.pack()
+        lista_letras = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
+        cb_cnpj = Combobox(nova_janela, values=lista_letras,state="readonly")
+        cb_cnpj.grid(row=1, column=0, sticky="w", padx=(5,0),pady=5)
+
+        # LABEL
+        labelEmpresa = Label(nova_janela, pady=8, text="Selecione a letra que corresponde a coluna de Empresas:")
+        labelEmpresa.grid(row=2, column=0, sticky="w", padx=(5,0),pady=5)
 
         # Defina a coluna empresa correspondente para selecioonar
-        coluna_empresa = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-        cb_empresa = Combobox(nova_janela, values=coluna_empresa,state="readonly")
-        cb_empresa.pack()
+        cb_empresa = Combobox(nova_janela, values=lista_letras,state="readonly")
+        cb_empresa.grid(row=3, column=0, sticky="w", padx=(5,0),pady=5)
+
+        # LABEL
+        labelIncricao = Label(nova_janela, text="Selecione a letra que corresponde a coluna de Inscrição Estadual:")
+        labelIncricao.grid(row=4, column=0, sticky="w", padx=(5,0),pady=5)
 
         # Defina a coluna inscrição correspondente para selecioonar
-        coluna_inscricao = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-        cb_inscricao = Combobox(nova_janela, values=coluna_inscricao,state="readonly")
-        cb_inscricao.pack()
+        cb_inscricao = Combobox(nova_janela, values=lista_letras,state="readonly")
+        cb_inscricao.grid(row=5, column=0, sticky="w", padx=(5,0),pady=5)
+
+        # LABEL
+        cb_inscricao_lab = Label(nova_janela, text="Selecione o número que corresponde ao primeiro valor nas linhas:")
+        cb_inscricao_lab.grid(row=6, column=0, sticky="w", padx=(5,0),pady=5)
+
+        # Defina a linha que corresponde o inicio da coluna
+        coluna_linha = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+        cb_linha = Combobox(nova_janela, values=coluna_linha,state="readonly")
+        #cb_linha.config(state="disabled")
+        cb_linha.grid(row=7, column=0, sticky="w", padx=(100,0),pady=5)
+
+        # Salvar
+        alvarR = Button(nova_janela,text="Salvar" , command=salvar_valor)
+        alvarR.grid(row=8, column=0, sticky="w", padx=(5,0), ipadx=25, pady=15)
 
 
 
@@ -250,19 +315,22 @@ class Application:
             pdf_text_dict = converter_pdf_para_txt(lista_pdf)
             resultados_intermediarios = []  # Lista para armazenar os dataframes intermediários
             pdf_sources = []
+            cb_linha = int(valores['cb_linha']) - 1
+            global cb_inscricao, cb_cnpj, cb_empresa
+
+
             for chave_pdf, valor_text in pdf_text_dict.items():
                 chave_pdf = chave_pdf
                 pdf_text = " ".join(valor_text.split())
                 pdf_lines = pdf_text.split("\n")
 
-
                 xlsx_file = self.xlsx_sheet
                 df = pd.read_excel(xlsx_file)
-                cnpj_key = df.iloc[:, 2][3:]
-                value = df.iloc[:, 0][3:]
-                caceal_key = df.iloc[:, 25][3:]
-                # Crie a lista para armazenar as fontes dos PDFs
+                cnpj_key = df.iloc[:, int(cb_cnpj)][cb_linha:]
+                value = df.iloc[:, int(cb_empresa)][cb_linha:]
+                caceal_key = df.iloc[:, int(cb_inscricao)][cb_linha:]
 
+                # Crie a lista para armazenar as fontes dos PDFs
 
                 resultado_dict = {}
                 for chave, valor in zip(cnpj_key, value):
