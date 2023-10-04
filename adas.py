@@ -1,6 +1,6 @@
 from tkinter import messagebox, filedialog, LEFT, BOTTOM, TOP, RIGHT, StringVar, END, Checkbutton, PhotoImage,Tk, Label, Button, Entry,Listbox, Scrollbar, Text, Frame, Toplevel
 from tkinter.ttk import Frame, Progressbar, Combobox
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageSequence
 import pandas as pd
 import pdfplumber
 import datetime
@@ -52,6 +52,54 @@ def converter_pdf_para_txt(lista_pdf):
     except Exception as e:
         print(f'Erro no converter_pdf_para_txt {e}')
 
+def atualizar_frame(frame):
+    try:
+        proximo_frame = (frame + 1) % total_frames
+        label.configure(image=frames[proximo_frame])
+        label.frame = proximo_frame
+        root.after(100, atualizar_frame, proximo_frame)
+
+    except Exception as e:
+        print(f'Erro no atualizar_frame {e}')
+
+continuar_executando = True
+
+def iniciar_animacao():
+    try:
+        global gif, frames, total_frames, label, continuar_executando
+
+        # Carregue o GIF usando a biblioteca Pillow
+        gif_file = "C:\\Users\\Analise\\Desktop\\Projetos\\pdf_xls_reader\\img\\gifs-com-fundo-transparente-0.gif"
+        gif = Image.open(gif_file)
+        frames = [frame.copy() for frame in ImageSequence.Iterator(gif)]
+
+        if continuar_executando:
+            total_frames = len(frames)
+            # Redimensione os frames individualmente para o tamanho desejado
+            new_width = 30
+            new_height = 30
+            frames_resized = [frame.resize((new_width, new_height), Image.BILINEAR) for frame in frames]
+            frames = [ImageTk.PhotoImage(frame) for frame in frames_resized]
+
+            label = Label(root, image=frames[0])
+            label.frame = 0
+            label.grid(row=6, column=0, padx=(170,0))  # Use o grid para posicionar a label
+            # Inicie a animação
+            atualizar_frame(0)
+
+        else:
+            continuar_executando = True
+            pass
+    except Exception as e:
+        print(f'Erro no iniciar_animacao {e}')
+
+def parar_funcao():
+    try:
+        global continuar_executando
+        continuar_executando = False
+    except Exception as e:
+        print(f'Erro no parar_funcao {e}')
+
 class Application:
     def __init__(self, master):
         try:
@@ -78,6 +126,11 @@ class Application:
             self.imagem_concluido = Image.open("C:\\Users\\Analise\\Desktop\\Projetos\\pdf_xls_reader\\img\\check.png")
             self.imagem_concluido = self.imagem_concluido.resize((15, 15), Image.BILINEAR)
             self.imagem_concluido = ImageTk.PhotoImage(self.imagem_concluido)
+
+            # #Barra de Carregamento
+            # self.imagem_carregando = Image.open("C:\\Users\\Analise\\Desktop\\Projetos\\pdf_xls_reader\\img\\gifs-com-fundo-transparente-0.gif")
+            # self.imagem_carregando = self.imagem_carregando.resize((35, 35), Image.BILINEAR)
+            # self.imagem_carregando = ImageTk.PhotoImage(self.imagem_carregando)
 
             # BOTÃO DE CONFIGURAÇÃO
             self.buttonPDFLabel = Button(text="Ajustes", width=10, height=1, command=self.abrir_nova_janela)
@@ -115,7 +168,7 @@ class Application:
             self.XLSX.grid(row=4, column=0, sticky="w", padx=(100, 0))
 
             # INICIAR
-            self.botaoIniciar = Button(text="Iniciar Consulta", command=self.executar_thread)
+            self.botaoIniciar = Button(text="Iniciar Consulta", command=self.executar_ativo)
             self.botaoIniciar.grid(row=6, column=0, pady=5)
             self.botaoIniciar.config(state="disabled")
 
@@ -141,75 +194,40 @@ class Application:
 
         # Função para salvar o valor selecionado
         def salvar_valor():
-            global cb_inscricao, cb_cnpj, cb_empresa
-            nonlocal valor_atual_cb_linha, valor_atual_cb_linha1, valor_atual_cb_linha2, valor_atual_cb_linha3
+            global cb_inscricao, cb_cnpj, cb_empresa, cb_linha
+            nonlocal valor_atual_cb_linha1, valor_atual_cb_linha2, valor_atual_cb_linha3
 
-            # 1. Carregar o JSON existente em um dicionário
+            # Carregar o JSON existente em um dicionário
             with open('config.json', 'r') as arquivo:
                 valores = json.load(arquivo)
 
-            # 2. Faça as alterações desejadas no dicionário
-            valores['cb_inscricao'] = cb_inscricao.get()
-            valores['cb_cnpj'] = cb_cnpj.get()
-            valores['cb_empresa'] = cb_empresa.get()
-            valores['cb_linha'] = cb_linha.get()
+            # Obter os valores selecionados nos Combobox
+            valores['cb_cnpj'] = cb_cnpj_combobox.get()
+            valores['cb_inscricao'] = cb_inscricao_combobox.get()
+            valores['cb_empresa'] = cb_empresa_combobox.get()
+            valores['cb_linha'] = cb_linha_combobox.get()
 
-            # Mapeamento de letras para valores correspondentes
-            mapeamento_letra_para_valor = {letra: valor for valor, letra in enumerate("ABCDEFGHIJKLMNOPQRSTUVWXYZ")}
-
-            # Converter as letras para valores
-            valor_coluna_cnpj = mapeamento_letra_para_valor.get(valores['cb_cnpj'], valores['cb_cnpj'])
-            valor_cb_inscricao = mapeamento_letra_para_valor.get(valores['cb_inscricao'], valores['cb_inscricao'])
-            valor_Empresa = mapeamento_letra_para_valor.get(valores['cb_empresa'], valores['cb_empresa'])
-
-
-            if valores['cb_inscricao'] and valores['cb_cnpj'] and valores['cb_empresa'] and valores['cb_linha'] is not None:
-                # 2. Faça as alterações desejadas no dicionário
-                valores['cb_inscricao'] = str(valor_cb_inscricao)
-                valores['cb_cnpj'] = str(valor_coluna_cnpj)
-                valores['cb_empresa'] = str(valor_Empresa)
-                valores['cb_linha'] = cb_linha.get()
-            else:
-                messagebox.showerror("Erro", "Selecione todos os campos para concluir o processo.")
-                return
-
-            # Obtenha o valor selecionado no Combobox cb_cnpj
-            valor_selecionado_cb_cnpj = cb_cnpj.get()
-            print(valor_selecionado_cb_cnpj)
-            # Obtenha o valor selecionado no Combobox cb_inscricao
-            valor_selecionado_cb_inscricao = cb_inscricao.get()
-            # Obtenha o valor selecionado no Combobox cb_empresa
-            valor_selecionado_cb_empresa = cb_empresa.get()
-
-            # Mapeamento de números para letras
-            mapeamento_numero_para_letra = {valor: letra for valor, letra in enumerate("ABCDEFGHIJKLMNOPQRSTUVWXYZ")}
-
-            numero_coluna_cnpj = mapeamento_numero_para_letra.get(str(valor_selecionado_cb_cnpj),
-                                                                  valor_selecionado_cb_cnpj)
-            print(numero_coluna_cnpj)
-            numero_cb_inscricao = mapeamento_numero_para_letra.get(str(valor_selecionado_cb_inscricao),
-                                                                   valor_selecionado_cb_inscricao)
-            numero_Empresa = mapeamento_numero_para_letra.get(str(valor_selecionado_cb_empresa),
-                                                              valor_selecionado_cb_empresa)
+            # Salvar o dicionário atualizado no arquivo JSON
+            with open('config.json', 'w') as arquivo:
+                json.dump(valores, arquivo)
 
             if valores['cb_inscricao'] and valores['cb_cnpj'] and valores['cb_empresa'] and valores[
                 'cb_linha'] is not None:
-                # Atualize o valor da variável de controle
-                valor_atual_cb_linha1.set(f"Valor atual: {valor_selecionado_cb_inscricao}")
-                valor_atual_cb_linha2.set(f"Valor atual: {valor_selecionado_cb_cnpj}")
-                valor_atual_cb_linha3.set(f"Valor atual: {valor_selecionado_cb_empresa}")
+
+                # Atualizar o valor da variável de controle
+                valor_atual_cb_linha1.set(f"Valor atual: {valores['cb_inscricao']}")
+                valor_atual_cb_linha2.set(f"Valor atual: {valores['cb_cnpj']}")
+                valor_atual_cb_linha3.set(f"Valor atual: {valores['cb_empresa']}")
                 valor_atual_cb_linha.set(f"Valor atual: {valores['cb_linha']}")
+
             else:
                 messagebox.showerror("Erro", "Selecione todos os campos para concluir o processo.")
-                return
 
-        global cb_inscricao, cb_cnpj, cb_empresa
-        # Crie um dicionário que mapeia números para letras
-        mapeamento_numero_para_letra = {valor: letra for valor, letra in enumerate("ABCDEFGHIJKLMNOPQRSTUVWXYZ")}
+        # Carregar o JSON existente em um dicionário
+        with open('config.json', 'r') as arquivo:
+            valores = json.load(arquivo)
 
-        numero_coluna_cnpj = mapeamento_numero_para_letra.get(int(cb_cnpj), cb_cnpj)
-        numero_cb_inscricao = mapeamento_numero_para_letra.get(int(cb_inscricao), cb_inscricao)
-        numero_Empresa = mapeamento_numero_para_letra.get(int(cb_empresa), cb_empresa)
+        global numero_coluna_cnpj,numero_cb_inscricao,numero_Empresa
 
         textTitulo = Label(nova_janela, text="PLANILHA INTELIGÊNTE", font=fonte_personalizada)
         textTitulo.grid()
@@ -220,26 +238,25 @@ class Application:
 
         # Defina a coluna cnpj correspondente para selecioonar
         lista_letras = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-        cb_cnpj = Combobox(nova_janela, values=lista_letras,state="readonly")
-        cb_cnpj.grid(row=1, column=0, sticky="w", padx=(5,0),pady=5)
+        cb_cnpj_combobox = Combobox(nova_janela, values=lista_letras,state="readonly")
+        cb_cnpj_combobox.grid(row=1, column=0, sticky="w", padx=(5,0),pady=5)
 
         valor_atual_cb_linha2 = StringVar()
-        valor_atual_cb_linha2.set(f"Valor atual: {numero_coluna_cnpj}")
-
+        valor_atual_cb_linha2.set(f"Valor atual: {valores['cb_cnpj']}")
         # Crie o Label cb_linha_1 com base na variável de controle
         cb_linha_14 = Label(nova_janela, textvariable=valor_atual_cb_linha2)
         cb_linha_14.grid(row=1, column=0, sticky="w", padx=(175, 0), pady=5)
 
         # LABEL
-        labelEmpresa = Label(nova_janela, pady=8, text="Selecione a letra que corresponde a coluna de Empresas:")
+        labelEmpresa = Label(nova_janela, pady=8, text="Selecione a letra que corresponde a coluna de Razão Social:")
         labelEmpresa.grid(row=2, column=0, sticky="w", padx=(5,0),pady=5)
 
         # Defina a coluna empresa correspondente para selecioonar
-        cb_empresa = Combobox(nova_janela, values=lista_letras,state="readonly")
-        cb_empresa.grid(row=3, column=0, sticky="w", padx=(5,0),pady=5)
+        cb_empresa_combobox = Combobox(nova_janela, values=lista_letras,state="readonly")
+        cb_empresa_combobox.grid(row=3, column=0, sticky="w", padx=(5,0),pady=5)
 
         valor_atual_cb_linha3 = StringVar()
-        valor_atual_cb_linha3.set(f"Valor atual: {numero_Empresa}")
+        valor_atual_cb_linha3.set(f"Valor atual: {valores['cb_empresa']}")
 
         # Crie o Label cb_linha_1 com base na variável de controle
         cb_linha_13 = Label(nova_janela, textvariable=valor_atual_cb_linha3)
@@ -250,11 +267,11 @@ class Application:
         labelIncricao.grid(row=4, column=0, sticky="w", padx=(5,0),pady=5)
 
         # Defina a coluna inscrição correspondente para selecioonar
-        cb_inscricao = Combobox(nova_janela, values=lista_letras,state="readonly")
-        cb_inscricao.grid(row=5, column=0, sticky="w", padx=(5,0),pady=5)
+        cb_inscricao_combobox = Combobox(nova_janela, values=lista_letras,state="readonly")
+        cb_inscricao_combobox.grid(row=5, column=0, sticky="w", padx=(5,0),pady=5)
 
         valor_atual_cb_linha1 = StringVar()
-        valor_atual_cb_linha1.set(f"Valor atual: {numero_cb_inscricao}")
+        valor_atual_cb_linha1.set(f"Valor atual: {valores['cb_inscricao']}")
 
         # Crie o Label cb_linha_1 com base na variável de controle
         cb_linha_12 = Label(nova_janela, textvariable=valor_atual_cb_linha1)
@@ -268,16 +285,17 @@ class Application:
         # Defina a linha que corresponde o inicio da coluna
         coluna_linha = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
 
-        cb_linha = Combobox(nova_janela, values=coluna_linha,state="readonly")
-        cb_linha.grid(row=7, column=0, sticky="w", padx=(5,0),pady=5)
+        cb_linha_combobox = Combobox(nova_janela, values=coluna_linha,state="readonly")
+        cb_linha_combobox.grid(row=7, column=0, sticky="w", padx=(5,0),pady=5)
 
         # Declare uma variável de controle para armazenar o valor atual de cb_linha
         valor_atual_cb_linha = StringVar()
         valor_atual_cb_linha.set(f"Valor atual: {valores['cb_linha']}")
 
         # Crie o Label cb_linha_1 com base na variável de controle
-        cb_linha_1 = Label(nova_janela, textvariable=valor_atual_cb_linha)
-        cb_linha_1.grid(row=7, column=0, sticky="w", padx=(175, 0), pady=5)
+        cb_linha_atual = Label(nova_janela, textvariable=valor_atual_cb_linha)
+        cb_linha_atual.grid(row=7, column=0, sticky="w", padx=(175, 0), pady=5)
+
 
         # Salvar
         alvarR = Button(nova_janela,text="Salvar" , command=salvar_valor)
@@ -302,12 +320,18 @@ class Application:
         except Exception as e:
             print(f'Erro no executar_thread {e}')
 
+    def executar_ativo(self):
+        try:
+            iniciar_animacao()
+            self.executar_thread()
+        except Exception as e:
+            print(f'Erro no executar_ativo {e}')
 
     def selecionar_xlsx(self):
         try:
             self.remover_imagem()
             self.xlsx_sheet = filedialog.askopenfilename(initialdir="/", title="Selecione um arquivo",
-                                                     filetypes=(("xlsx files", "*.xlsx"), ("all files", "*.*")))
+                                                     filetypes=(("xlsx files", ".xlsx;*.xls"), ("all files", "*.*")))
             if self.xlsx_sheet:
                 self.arquivo_xlsx_selecionado = True
 
@@ -332,11 +356,13 @@ class Application:
                 if self.lista_pdf is None:
                     self.lista_pdf = []
 
-                self.lista_pdf.extend(lista_nova)
-                self.arquivo_pdf_selecionado = True
+                for novo_pdf in lista_nova:
+                    # Verifica se o PDF já está na lista antes de adicioná-lo
+                    if novo_pdf not in self.lista_pdf:
+                        self.lista_pdf.append(novo_pdf)
+                        self.PDF.insert(END, os.path.basename(novo_pdf))
 
-                for i in self.lista_pdf:
-                    self.PDF.insert(END, os.path.basename(i))
+                self.arquivo_pdf_selecionado = True
 
             self.verif_ati_bt()
             print("PDFs selecionados")
@@ -385,8 +411,14 @@ class Application:
             pdf_text_dict = converter_pdf_para_txt(lista_pdf)
             resultados_intermediarios = []  # Lista para armazenar os dataframes intermediários
             pdf_sources = []
-            cb_linha = int(valores['cb_linha']) - 1
-            global cb_inscricao, cb_cnpj, cb_empresa
+            cb_linha = int(valores['cb_linha']) - 2
+
+            # Mapeamento de letras para valores correspondentes
+            mapeamento_letra_para_valor = {letra: valor for valor, letra in enumerate("ABCDEFGHIJKLMNOPQRSTUVWXYZ")}
+            # Converter as letras para valores
+            cb_cnpj = mapeamento_letra_para_valor.get(valores['cb_cnpj'], valores['cb_cnpj'])
+            cb_inscricao = mapeamento_letra_para_valor.get(valores['cb_inscricao'], valores['cb_inscricao'])
+            cb_empresa = mapeamento_letra_para_valor.get(valores['cb_empresa'], valores['cb_empresa'])
 
             for chave_pdf, valor_text in pdf_text_dict.items():
                 try:
@@ -461,6 +493,8 @@ class Application:
             try:
                 df_final = pd.concat(resultados_intermediarios, ignore_index=True)
                 df_final["ARQUIVO"] = pdf_sources
+                parar_funcao()
+                iniciar_animacao()
                 self.df_final = df_final
                 self.imagem_concluido_label1 = Label(image=self.imagem_concluido)
                 self.imagem_concluido_label1.grid(row=6, column=0, padx=(120, 0))
